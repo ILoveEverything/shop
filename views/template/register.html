@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>注册</title>
+</head>
+
+<body>
+    <form action="register" method="post">
+        <div>
+            帐号:
+            <input type="text" name="username" id="username">
+        </div>
+        <div>
+            密码:
+            <input type="password" name="password" id="password">
+        </div>
+        <div>
+            电话:
+            <input type="number" name="phone" id="phone">
+        </div>
+        <div>
+            邮箱:
+            <input type="email" name="email" id="email">
+        </div>
+        {{.status}}
+        <div>
+            <input type="submit" value="注册">
+        </div>
+    </form>
+</body>
+
+</html>
