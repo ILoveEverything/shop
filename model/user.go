@@ -28,8 +28,16 @@ type UserWallet struct {
 	MoneySum    uint   `gorm:"not null" json:"money_sum" form:"moneySum"`       //账户剩余金额
 }
 
+//用户收货地址
+type UserAddress struct {
+	gorm.Model
+	UserID     uint   `form:"userId" gorm:"not null" json:"user_id"`         //用户id
+	AddressNum uint   `form:"addressNum" gorm:"not null" json:"address_num"` //收货地址编号
+	Address    string `form:"address" gorm:"not null" json:"address"`        //收货地址
+}
+
 func init() {
-	err := db.DB.AutoMigrate(&UserInfo{}, &UserWallet{})
+	err := db.DB.AutoMigrate(&UserInfo{}, &UserWallet{}, &UserAddress{})
 	if err != nil {
 		os.Exit(-1)
 	}
@@ -45,7 +53,7 @@ func (u *UserInfo) CreateUser() (msg string, err error) {
 	if u.ID != 0 {
 		return "该手机号已被绑定", errors.New("该手机号已被绑定")
 	}
-	if err := db.DB.Create(&u).Error; err != nil {
+	if err := db.DB.Model(&UserInfo{}).Create(&u).Error; err != nil {
 		//fmt.Println("创建用户出错:", err)
 		return "查询失败", err
 	}
@@ -113,4 +121,12 @@ func (u *UserInfo) RetrieveUserInfo() (msg string, err error) {
 //注销账户
 func (u *UserInfo) DeleteUser() {
 	panic("implement me")
+}
+
+//添加收货地址
+func (u *UserAddress) AddAddress() (msg string, err error) {
+	if err := db.DB.Model(&UserAddress{}).Create(&u).Error; err != nil {
+		return "添加收货地址失败", errors.New("添加收货地址失败")
+	}
+	return "添加收货地址成功", nil
 }

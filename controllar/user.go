@@ -3,6 +3,7 @@ package controllar
 import (
 	"fmt"
 	"github.com/gin-gonic/gin"
+	"shop/e"
 	"shop/model"
 	"shop/utils"
 )
@@ -18,10 +19,6 @@ func RegisterPage(c *gin.Context) {
 
 //注册添加用户
 func Register(c *gin.Context) {
-	//username := c.PostForm("username")
-	//password := c.PostForm("password")
-	//phone := c.PostForm("phone")
-	//email := c.PostForm("email")
 	var user model.UserInfo
 	err := c.Bind(&user)
 	if err != nil {
@@ -55,12 +52,7 @@ func Register(c *gin.Context) {
 
 //用户登录
 func Login(c *gin.Context) {
-	//password := c.PostForm("password")
-	//phone := c.PostForm("phone")
 	var user model.UserInfo
-	//user.Username = username
-	//user.Password = password
-	//user.Phone = phone
 	if err := c.Bind(&user); err != nil {
 		utils.ReturnJson(c, "登录失败", 400, nil)
 		return
@@ -76,21 +68,17 @@ func Login(c *gin.Context) {
 		utils.ReturnJson(c, "密码错误", 400, nil)
 		return
 	}
-	utils.ReturnJson(c, msg, 200, nil)
+	//签发Token
+	token, err := utils.GenerateToken(user.ID)
+	if err != nil {
+		utils.ReturnJson(c, err.Error(), e.ERROR_AUTH_TOKEN, nil)
+		return
+	}
+	utils.ReturnJson(c, msg, 200, token)
 }
 
 //查看用户信息
 func ShowUserInfo(c *gin.Context) {
-	//phone := c.PostForm("phone")
-	//var user model.UserInfo
-	//user.Phone = phone
-	////fmt.Println(user)
-	//msg, err := user.RetrieveUserInfo()
-	//if err != nil {
-	//	utils.ReturnJson(c, msg, 400, nil)
-	//	return
-	//}
-	//utils.ReturnJson(c, msg, 200, user)
 	var user model.UserInfo
 	if err := c.Bind(&user); err != nil {
 		utils.ReturnJson(c, "查看失败", 400, nil)
@@ -106,28 +94,6 @@ func ShowUserInfo(c *gin.Context) {
 
 //修改用户信息
 func ModifyUserInfo(c *gin.Context) {
-	//oldPhone := c.PostForm("oldPhone")
-	//username := c.PostForm("username")
-	//password := c.PostForm("password")
-	//phone := c.PostForm("phone")
-	//email := c.PostForm("email")
-	//age := c.PostForm("age")
-	//gender := c.PostForm("gender")
-	//var user model.UserInfo
-	//user.Username = username
-	//user.Password = password
-	//user.Phone = phone
-	//user.Email = email
-	//user.Age = age
-	//user.Gender = gender
-	////打印查看
-	//fmt.Println(user, oldPhone)
-	//msg, err := user.UpdateUserInfo(oldPhone)
-	//if err != nil {
-	//	utils.ReturnJson(c, msg, 400, nil)
-	//	return
-	//}
-	//utils.ReturnJson(c, msg, 200, nil)
 	var user model.UserInfo
 	if err := c.Bind(&user); err != nil {
 		utils.ReturnJson(c, "修改失败", 400, nil)
@@ -142,3 +108,30 @@ func ModifyUserInfo(c *gin.Context) {
 	}
 	utils.ReturnJson(c, msg, 200, nil)
 }
+
+//添加收货地址
+func AddAddress(c *gin.Context) {
+	var address model.UserAddress
+	err := c.Bind(&address)
+	if err != nil {
+		utils.ReturnJson(c, "添加收货地址失败", 400, nil)
+		return
+	}
+	token := c.Request.Header.Get("Authorization")
+	claims, _ := utils.ParseToken(token)
+	address.UserID = claims.UID
+	msg, err := address.AddAddress()
+	if err != nil {
+		utils.ReturnJson(c, msg, 400, nil)
+		return
+	}
+	utils.ReturnJson(c, msg, 200, nil)
+}
+
+//修改收货地址
+//查询收货地址
+//删除收货地址
+//查询账户余额
+//充值
+//提现
+//消费记录
