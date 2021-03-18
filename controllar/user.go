@@ -84,6 +84,7 @@ func ShowUserInfo(c *gin.Context) {
 		utils.ReturnJson(c, "查看失败", 400, nil)
 		return
 	}
+	fmt.Println("bindUserInfo:", user)
 	msg, err := user.RetrieveUserInfo()
 	if err != nil {
 		utils.ReturnJson(c, msg, 400, nil)
@@ -99,9 +100,13 @@ func ModifyUserInfo(c *gin.Context) {
 		utils.ReturnJson(c, "修改失败", 400, nil)
 		return
 	}
-	oldPhone := c.PostForm("oldPhone")
-	fmt.Println(user)
-	msg, err := user.UpdateUserInfo(oldPhone)
+	//从Token中解析出用户id
+	token := c.Request.Header.Get("Authorization")
+	claims, _ := utils.ParseToken(token)
+	//fmt.Println("claims:", claims)
+	user.ID = claims.UID
+	//fmt.Println("user.ID:", user.ID)
+	msg, err := user.UpdateUserInfo()
 	if err != nil {
 		utils.ReturnJson(c, msg, 400, nil)
 		return

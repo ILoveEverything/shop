@@ -11,21 +11,12 @@ import (
 //用户信息
 type UserInfo struct {
 	gorm.Model
-	Username string `json:"username" form:"username" gorm:"not null;unique"`
-	Password string `json:"password" form:"password" gorm:"not null"`
-	Phone    string `json:"phone" form:"phone" gorm:"not null;unique"`
-	Email    string `json:"email" form:"email" gorm:"not null;unique"`
-	Age      string `json:"age" form:"age"`
-	Gender   string `json:"gender" form:"gender"`
-}
-
-//用户钱包
-type UserWallet struct {
-	gorm.Model
-	UserID      uint   `gorm:"not null"`
-	FlowContent string `gorm:"not null" json:"flow_content" form:"flowContent"` //流水内容
-	FlowMoney   uint   `gorm:"not null" json:"flow_money" form:"flowMoney"`     //流水金额
-	MoneySum    uint   `gorm:"not null" json:"money_sum" form:"moneySum"`       //账户剩余金额
+	Username string `json:"username" form:"username" gorm:"not null;unique"` //用户名
+	Password string `json:"password" form:"password" gorm:"not null"`        //密码
+	Phone    string `json:"phone" form:"phone" gorm:"not null;unique"`       //手机号
+	Email    string `json:"email" form:"email" gorm:"not null;unique"`       //邮箱
+	Age      string `json:"age" form:"age"`                                  //年龄
+	Gender   string `json:"gender" form:"gender"`                            //性别
 }
 
 //用户收货地址
@@ -37,7 +28,7 @@ type UserAddress struct {
 }
 
 func init() {
-	err := db.DB.AutoMigrate(&UserInfo{}, &UserWallet{}, &UserAddress{})
+	err := db.DB.AutoMigrate(&UserInfo{}, &UserAddress{})
 	if err != nil {
 		os.Exit(-1)
 	}
@@ -61,34 +52,34 @@ func (u *UserInfo) CreateUser() (msg string, err error) {
 }
 
 //修改用户信息
-func (u *UserInfo) UpdateUserInfo(oldPhone string) (msg string, err error) {
+func (u *UserInfo) UpdateUserInfo() (msg string, err error) {
 	var user UserInfo
-	if err := db.DB.Model(&UserInfo{}).Where("phone=?", oldPhone).Find(&user).Error; err != nil {
-		//fmt.Println(err.Error())
-		return "修改失败", err
-	}
-	//fmt.Println("id:", user.ID)
-	if user.ID == 0 {
-		return "没有该用户", errors.New("没有该用户")
-	}
 	if len(u.Phone) != 0 {
-		if err := db.DB.Model(&UserInfo{}).Where("phone=?", u.Phone).Find(&u).Error; err != nil {
+		if err := db.DB.Model(&UserInfo{}).Where("phone=?", u.Phone).Find(&user).Error; err != nil {
 			return "修改失败", err
 		}
-		if u.ID != 0 {
+		if user.ID != 0 {
 			return "该手机号已被绑定", errors.New("该手机号已被绑定")
 		}
 	}
 	if len(u.Email) != 0 {
-		if err := db.DB.Model(&UserInfo{}).Where("email=?", u.Email).Find(&u).Error; err != nil {
+		if err := db.DB.Model(&UserInfo{}).Where("email=?", u.Email).Find(&user).Error; err != nil {
 			return "修改失败", err
 		}
-		if u.ID != 0 {
+		if user.ID != 0 {
 			return "该邮箱已被绑定", errors.New("该邮箱已被绑定")
 		}
 	}
-	if err := db.DB.Model(&UserInfo{}).Where("id=?", user.ID).Updates(&u).Error; err != nil {
-		fmt.Println("修改信息失败:", err)
+	if len(u.Username) != 0 {
+		if err := db.DB.Model(&UserInfo{}).Where("username=?", u.Username).Find(&user).Error; err != nil {
+			return "修改失败", err
+		}
+		if user.ID != 0 {
+			return "用户名重复", errors.New("用户名重复")
+		}
+	}
+	if err := db.DB.Model(&UserInfo{}).Where("id=?", u.ID).Updates(&u).Error; err != nil {
+		//fmt.Println("修改信息失败:", err)
 		return "修改失败", err
 	}
 	return "修改成功", nil
@@ -108,7 +99,7 @@ func (u *UserInfo) RetrieveLogin() (msg string, err error) {
 
 //查看用户信息
 func (u *UserInfo) RetrieveUserInfo() (msg string, err error) {
-	if err := db.DB.Model(&UserInfo{}).Where("phone=?", u.Phone).Find(&u).Error; err != nil {
+	if err := db.DB.Model(&UserInfo{}).Where("id=?", u.ID).Find(&u).Error; err != nil {
 		//fmt.Println(err.Error())
 		return "查询失败", errors.New("查询失败")
 	}
