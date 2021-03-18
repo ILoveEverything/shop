@@ -2,13 +2,21 @@ package router
 
 import (
 	"github.com/gin-gonic/gin"
+	"net/http"
 	"shop/controllar"
 	"shop/middleware"
 )
 
 func InitRouter() *gin.Engine {
 	r := gin.Default()
+	//限制文件上传大小
+	r.MaxMultipartMemory = 8 << 20
+	//加载静态文件
+	r.StaticFS("assets", http.Dir("./assets"))
+	//设置model模式
 	gin.SetMode("debug")
+	//客户路由
+	//不需要携带Token
 	apiNotToken := r.Group("/v1/api")
 	{
 		//用户信息
@@ -19,26 +27,20 @@ func InitRouter() *gin.Engine {
 			//登录
 			user.POST("/login", controllar.Login)
 		}
-		//todo 商品
+		//商品
 		goods := apiNotToken.Group("/goods")
 		{
-			goods.GET("/menu")
-			goods.GET("/list")
+			//商品分类
+			goods.GET("/menu", controllar.GoodsMenu)
+			//浏览商品
+			goods.GET("/list", controllar.GoodsList)
+			//商品轮播图
 			goods.GET("/banner")
-		}
-		//todo 商品详情
-		goodsDetails := apiNotToken.Group("goodsDetails")
-		{
-			goodsDetails.POST("/")
-		}
-		//todo 订单
-		order := apiNotToken.Group("/order")
-		{
-			order.GET("/menu")
-			order.GET("/list")
-			order.GET("/banner")
+			//商品详情
+			goods.POST("/Details", controllar.GoodsDetails)
 		}
 	}
+	//需要携带Token
 	apiNeedToken := r.Group("/v1/api")
 	{
 		apiNeedToken.Use(middleware.JWT())
@@ -65,8 +67,24 @@ func InitRouter() *gin.Engine {
 			//提现
 			user.POST("/subMoney")
 			//消费记录
-			user.POST("logMoney")
+			user.POST("/logMoney")
+		}
+		//商品
+		goods := apiNeedToken.Group("/goods")
+		{
+			//上传商品
+			goods.POST("/updateGoods", controllar.UpdateGoods)
+			//上传商品图片
+			goods.POST("/updateGoodsImage", controllar.UpdateGoodsImages)
+		}
+		//todo 订单
+		order := apiNotToken.Group("/order")
+		{
+			order.GET("/menu")
+			order.GET("/list")
+			order.GET("/banner")
 		}
 	}
+	//商家路由
 	return r
 }
