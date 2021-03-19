@@ -1,8 +1,12 @@
 package main
 
-import "shop/router"
+import (
+	"shop/db"
+	"shop/router"
+)
 
 func main() {
 	r := router.InitRouter()
 	r.Run(":9999")
+	defer db.RedisDB.Close()
 }

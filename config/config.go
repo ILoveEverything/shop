@@ -16,7 +16,18 @@ var (
 	WriteTimeout time.Duration
 	PageSize     int
 	JwtSecret    string
+	SuRedis      redis
 )
+
+type redis struct {
+	Types          string `ini:"TYPES"`
+	PassWord       string `ini:"PASSWORD"`
+	Host           string `ini:"HOST"`
+	Port           string `ini:"PORT"`
+	DatabasesName  int    `ini:"DATABASES_NAME"`
+	POOL_SIZE      int    `ini:"POOL_SIZE"`
+	MIN_IDLE_CONNS int    `ini:"MIN_IDLE_CONNS"`
+}
 
 func init() {
 	var err error
@@ -28,6 +39,7 @@ func init() {
 	LoadBase()
 	LoadServer()
 	LoadApp()
+	LoadRedis()
 	//启动创建商品图片文件夹
 	if err := os.MkdirAll("assets/goodsImages", os.ModePerm); err != nil {
 		fmt.Println(err)
@@ -69,4 +81,11 @@ func LoadApp() {
 	JwtSecret = sec.Key("JWT_SECRET").MustString("!@)*#)!@U#@*!@!)")
 	//todo
 	PageSize = sec.Key("PAGE_SIZE").MustInt(10)
+}
+
+func LoadRedis() {
+	err := Cfg.Section("redis").MapTo(&SuRedis)
+	if err != nil {
+		panic(err)
+	}
 }

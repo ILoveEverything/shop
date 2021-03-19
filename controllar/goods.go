@@ -10,70 +10,88 @@ import (
 	"time"
 )
 
-//定义商品状态
-const (
-	Unsold = iota
-	PreSale
-	InStock
-	Discontinued
-	OffShelf
-)
+var Goods model.GoodsDetails
 
-var GoodsStatus = map[int]string{
-	Unsold:       "未售",
-	PreSale:      "预售",
-	InStock:      "在售",
-	Discontinued: "停售",
-	OffShelf:     "下架",
-}
-
-type GoodInfo struct {
-	Id    uint   `json:"id"`
-	Name  string `json:"name"`
-	Image string `json:"image"`
+//返回前端商品信息
+type GoodsInfoPage struct {
+	BusinessId     uint   `form:"businessId" gorm:"not null" json:"business_id"`      //商家id
+	GoodsId        int64  `json:"goods_id" gorm:"not null;unique" form:"goodsId"`     //商品id
+	GoodsTitle     string `gorm:"not null" form:"goodsTitle" json:"goods_title"`      //商品标题
+	GoodsImage     string `gorm:"not null" form:"goodsImage" json:"goods_image_path"` //商品图片
+	GoodsName      string `gorm:"not null" form:"goodsName" json:"goods_name"`        //商品名称
+	GoodsTag       string `gorm:"not null" form:"goodsTag" json:"goods_tag"`          //商品标签
+	GoodsParentTag string `json:"goods_parent_tag" form:"goodsParentTag"`             //商品父级标签
+	GoodsExplain   string `gorm:"not null" json:"goods_explain" form:"goodsExplain"`  //商品介绍
+	GoodsPrice     uint   `gorm:"not null" json:"goods_price" form:"goodsPrice"`      //商品价格
+	GoodsModel     string `gorm:"not null" json:"goods_model" form:"goodsModel"`      //商品型号
 }
 
 //浏览商品
 func GoodsList(c *gin.Context) {
-	var GoodsListArray model.GoodsList
-	data, err := GoodsListArray.ShowGoodsList()
-	if err != nil {
-		utils.ReturnJson(c, "查看失败,请重试", 400, nil)
-		return
-	}
-	utils.ReturnJson(c, "成功", 200, data)
-}
-
-//商品分类
-func GoodsMenu(c *gin.Context) {
-	var GoodsMenuArray model.GoodsMenu
-	data, err := GoodsMenuArray.ShowGoodsMenu()
-	if err != nil {
-		utils.ReturnJson(c, "失败,请重试", 400, nil)
-		return
-	}
-	utils.ReturnJson(c, "成功", 200, data)
-}
-
-//商品详情
-func GoodsDetails(c *gin.Context) {
-	var GoodsDetailsStruct model.GoodsDetails
-	if err := c.Bind(&GoodsDetailsStruct); err != nil {
-		utils.ReturnJson(c, "查看失败", 400, nil)
-		return
-	}
-	//fmt.Println(GoodsDetailsStruct)
-	msg, err := GoodsDetailsStruct.ShowGoodsDetails()
+	var GoodsListArray []model.GoodsList
+	var GoodsList model.GoodsList
+	data, msg, err := Goods.ShowAllGoodsDetails()
 	if err != nil {
 		utils.ReturnJson(c, msg, 400, nil)
 		return
 	}
-	//fmt.Println(GoodsDetailsStruct)
-	utils.ReturnJson(c, msg, 200, GoodsDetailsStruct)
+	for _, v := range data {
+		GoodsList.GoodsId = v.GoodsId
+		GoodsList.GoodsTitle = v.GoodsTitle
+		GoodsList.GoodsImage = v.GoodsImage
+		GoodsListArray = append(GoodsListArray, GoodsList)
+	}
+	utils.ReturnJson(c, "成功", 200, GoodsListArray)
 }
 
-//上传商品
-func UpdateGoods(c *gin.Context) {
+//商品分类
+func GoodsMenu(c *gin.Context) {
+	var GoodsMenuArray []model.GoodsMenu
+	var GoodsMenu model.GoodsMenu
+	data, msg, err := Goods.ShowAllGoodsDetails()
+	if err != nil {
+		utils.ReturnJson(c, msg, 400, nil)
+		return
+	}
+	for _, v := range data {
+		GoodsMenu.GoodsId = v.GoodsId
+		GoodsMenu.GoodsTitle = v.GoodsTitle
+		GoodsMenu.GoodsTitle = v.GoodsTitle
+		GoodsMenu.GoodsTag = v.GoodsTag
+		GoodsMenu.GoodsParentTag = v.GoodsParentTag
+		GoodsMenu.GoodsImage = v.GoodsImage
+		GoodsMenuArray = append(GoodsMenuArray, GoodsMenu)
+	}
+	utils.ReturnJson(c, "成功", 200, GoodsMenuArray)
+}
+
+//商品详情
+func GoodsDetails(c *gin.Context) {
+	if err := c.Bind(&Goods); err != nil {
+		utils.ReturnJson(c, "查看失败", 400, nil)
+		return
+	}
+	msg, err := Goods.ShowGoodsDetails()
+	if err != nil {
+		utils.ReturnJson(c, msg, 400, nil)
+		return
+	}
+	var GoodsInfo GoodsInfoPage
+	GoodsInfo.BusinessId = Goods.BusinessId
+	GoodsInfo.GoodsId = Goods.GoodsId
+	GoodsInfo.GoodsTitle = Goods.GoodsTitle
+	GoodsInfo.GoodsImage = Goods.GoodsImage
+	GoodsInfo.GoodsName = Goods.GoodsName
+	GoodsInfo.GoodsTag = Goods.GoodsTag
+	GoodsInfo.GoodsParentTag = Goods.GoodsParentTag
+	GoodsInfo.GoodsExplain = Goods.GoodsExplain
+	GoodsInfo.GoodsPrice = Goods.GoodsPrice
+	GoodsInfo.GoodsModel = Goods.GoodsModel
+	utils.ReturnJson(c, msg, 200, GoodsInfo)
+}
+
+//添加商品
+func CreateGoods(c *gin.Context) {
 	var (
 		msg string
 		err error
@@ -121,6 +139,11 @@ func UpdateGoods(c *gin.Context) {
 		utils.ReturnJson(c, "请重新输入商品状态编号", 400, nil)
 		return
 	}
+	//获取商家id
+	token := c.Request.Header.Get("Authorization")
+	claims, _ := utils.ParseToken(token)
+	goods.BusinessId = claims.UID
+	//创建商品编号
 	now := time.Now()
 	goods.GoodsId = now.UnixNano()
 	//添加商品到商品详情表
@@ -129,35 +152,11 @@ func UpdateGoods(c *gin.Context) {
 		utils.ReturnJson(c, msg, 400, nil)
 		return
 	}
-	//添加商品到商品浏览表
-	var goodsList model.GoodsList
-	goodsList.GoodsId = goods.GoodsId
-	goodsList.GoodsTitle = goods.GoodsTitle
-	goodsList.GoodsImage = goods.GoodsImage
-	msg, err = goodsList.CreateGoodsList()
-	if err != nil {
-		utils.ReturnJson(c, msg, 400, nil)
-		return
-	}
-	//添加商品到商品分类表
-	var goodsMenu model.GoodsMenu
-	goodsMenu.GoodsId = goods.GoodsId
-	goodsMenu.GoodsTitle = goods.GoodsTitle
-	goodsMenu.GoodsTag = goods.GoodsTag
-	goodsMenu.GoodsParentTag = goods.GoodsParentTag
-	goodsMenu.GoodsImage = goods.GoodsImage
-	msg, err = goodsMenu.CreateGoodsMenu()
-	if err != nil {
-		utils.ReturnJson(c, msg, 400, nil)
-		return
-	}
 	utils.ReturnJson(c, msg, 200, nil)
 }
 
 //上传图片
-func UpdateGoodsImages(c *gin.Context) {
-	//保存上传图片
-	//form, err := c.MultipartForm()
+func AddGoodsImages(c *gin.Context) {
 	file, err := c.FormFile("images")
 	if err != nil {
 		utils.ReturnJson(c, "图片上传失败", 400, nil)
@@ -170,9 +169,7 @@ func UpdateGoodsImages(c *gin.Context) {
 		return
 	}
 	now := time.Now()
-	//fmt.Println(now)
 	nowTime := fmt.Sprint(now.UnixNano())
-	//fmt.Println(nowTime)
 	dst := "./assets/goodsImages/" + nowTime + fileExt
 	fmt.Println(dst)
 	err1 := c.SaveUploadedFile(file, dst)
@@ -182,14 +179,9 @@ func UpdateGoodsImages(c *gin.Context) {
 		return
 	}
 	utils.ReturnJson(c, "成功", 200, map[string]interface{}{"GoodsImage": dst[1:]})
-	//images := form.File["images"]
-	//for _, v := range images {
-	//	dst := "/assets/goodsImages/" + v.Filename
-	//	err := c.SaveUploadedFile(v, dst)
-	//	if err != nil {
-	//		utils.ReturnJson(c, "图片保存失败", 400, nil)
-	//		return
-	//	}
-	//	utils.ReturnJson(c, "图片保存成功", 200, dst)
-	//}
+}
+
+//更改商品信息 todo
+func UpdateGoods(c *gin.Context) {
+
 }

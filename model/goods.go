@@ -10,7 +10,6 @@ import (
 
 //商品浏览表
 type GoodsList struct {
-	Id         uint   `gorm:"primarykey"`
 	GoodsId    int64  `gorm:"not null" json:"goods_id" form:"goodsId"`            //商品id
 	GoodsTitle string `gorm:"not null" form:"goodsTitle" json:"goods_title"`      //商品标题
 	GoodsImage string `gorm:"not null" form:"goodsImage" json:"goods_image_path"` //商品图片
@@ -30,21 +29,11 @@ type GoodsDetails struct {
 	GoodsPrice     uint   `gorm:"not null" json:"goods_price" form:"goodsPrice"`       //商品价格
 	GoodsModel     string `gorm:"not null" json:"goods_model" form:"goodsModel"`       //商品型号
 	GoodsQuantity  uint   `gorm:"not null" json:"goods_quantity" form:"goodsQuantity"` //商品库存
-	GoodsStatus    int    `gorm:"not null" json:"goods_status" form:"goodsStatus"`     //商品状态
-}
-
-//商品评论表
-type GoodsEvaluate struct {
-	gorm.Model
-	GoodsId         int64  `gorm:"not null" json:"goods_id" form:"goodsId"`                 //商品id
-	EvaluateUserId  uint   `gorm:"not null" json:"evaluate_user_id" form:"evaluateUserId"`  //评论用户id
-	EvaluateContent string `gorm:"not null" json:"evaluate_content" form:"evaluateContent"` //评论内容
-	EvaluateImages  string `json:"evaluate_image" form:"evaluateImages"`                    //评论图片
+	GoodsStatus    int    `gorm:"not null" json:"goods_status" form:"goodsStatus"`     //商品状态:0--未售;1--预售;2--在售;3--停售;4--下架;5--删除
 }
 
 //商品分类
 type GoodsMenu struct {
-	Id             uint   `gorm:"primarykey"`
 	GoodsId        int64  `gorm:"not null" json:"goods_id" form:"goodsId"`            //商品id
 	GoodsTitle     string `gorm:"not null" form:"goodsTitle" json:"goods_title"`      //商品标题
 	GoodsTag       string `gorm:"not null" form:"goodsTag" json:"goods_tag"`          //商品标签
@@ -53,7 +42,7 @@ type GoodsMenu struct {
 }
 
 func init() {
-	if err := db.DB.AutoMigrate(&GoodsDetails{}, &GoodsEvaluate{}, &GoodsList{}, &GoodsMenu{}); err != nil {
+	if err := db.DB.AutoMigrate(&GoodsDetails{}); err != nil {
 		fmt.Println(err)
 		os.Exit(-1)
 	}
@@ -70,22 +59,13 @@ func (g *GoodsDetails) ShowGoodsDetails() (msg string, err error) {
 	return "查找成功", nil
 }
 
-//获取商品浏览表数据
-func (g *GoodsList) ShowGoodsList() (data []GoodsList, err error) {
-	var GoodsListArray []GoodsList
-	if err := db.DB.Model(&GoodsDetails{}).Find(&GoodsListArray).Error; err != nil {
-		return nil, err
+//获取所有商品详情表数据
+func (g *GoodsDetails) ShowAllGoodsDetails() (data []*GoodsDetails, msg string, err error) {
+	var AllGoods []*GoodsDetails
+	if err := db.DB.Model(&GoodsDetails{}).Find(&AllGoods).Error; err != nil {
+		return nil, "查找失败", err
 	}
-	return GoodsListArray, nil
-}
-
-//获取商品分类表数据
-func (g *GoodsMenu) ShowGoodsMenu() (data []GoodsMenu, err error) {
-	var GoodsMenuArray []GoodsMenu
-	if err := db.DB.Model(&GoodsMenu{}).Find(&GoodsMenuArray).Error; err != nil {
-		return nil, err
-	}
-	return GoodsMenuArray, nil
+	return AllGoods, "查找成功", nil
 }
 
 //添加商品到商品详情表
@@ -96,19 +76,11 @@ func (g *GoodsDetails) CreateGoodsDetails() (msg string, err error) {
 	return "商品添加成功", nil
 }
 
-//添加商品到商品浏览表
-func (g *GoodsList) CreateGoodsList() (msg string, err error) {
-	if err = db.DB.Model(&GoodsList{}).Create(&g).Error; err != nil {
-		fmt.Println(err)
-		return "商品添加失败", err
+//更新商品库存
+func (g *GoodsDetails) UpdateGoodsQuantity() (msg string, err error) {
+	err = db.DB.Model(&GoodsDetails{}).Where("id=?", g.ID).Updates(map[string]interface{}{"goods_quantity": g.GoodsQuantity}).Error
+	if err != nil {
+		return "更改失败", err
 	}
-	return "商品添加成功", nil
-}
-
-//添加商品到商品分类表
-func (g *GoodsMenu) CreateGoodsMenu() (msg string, err error) {
-	if err = db.DB.Model(&GoodsMenu{}).Create(&g).Error; err != nil {
-		return "商品添加失败", err
-	}
-	return "商品添加成功", nil
+	return "成功", nil
 }
