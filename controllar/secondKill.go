@@ -2,8 +2,8 @@ package controllar
 
 import (
 	"context"
-	"fmt"
 	"github.com/gin-gonic/gin"
+	"github.com/go-redis/redis/v8"
 	"shop/db"
 	"shop/model"
 	"shop/utils"
@@ -73,18 +73,16 @@ func SecondKill(c *gin.Context) {
 	}
 	defer delete(suMap, claims.UID)
 	//读取已秒杀用户id
-	get, err := db.RedisDB.LRange(ctx, strconv.FormatInt(userSK.GoodsId, 10), 0, -1).Result()
-	if err != nil {
-		fmt.Println(err)
+	get, err := db.RedisDB.Get(ctx, strconv.Itoa(int(claims.UID))+":"+strconv.FormatInt(userSK.GoodsId, 10)).Result()
+	if err != nil && err != redis.Nil {
+		//fmt.Println(err)
 		//第一次查询无内容会报错
-		//utils.ReturnJson(c, "读redis存储秒杀记录-->秒杀失败", 400, nil)
-		//return
+		utils.ReturnJson(c, "读redis存储秒杀记录-->秒杀失败", 400, nil)
+		return
 	}
-	for _, v := range get {
-		if v == strconv.Itoa(int(claims.UID)) {
-			utils.ReturnJson(c, "不能再次参与秒杀", 400, nil)
-			return
-		}
+	if get == strconv.Itoa(1) {
+		utils.ReturnJson(c, "不能参加二次秒杀", 400, nil)
+		return
 	}
 	//抛出秒杀资格
 	var s model.SecondKillGoodsDetails
@@ -96,7 +94,7 @@ func SecondKill(c *gin.Context) {
 	}
 	if result != "" {
 		//记录已秒杀的用户 todo 修改活动时间
-		_, err := db.RedisDB.LPush(ctx, strconv.FormatInt(userSK.GoodsId, 10), claims.UID).Result()
+		_, err := db.RedisDB.Set(ctx, strconv.Itoa(int(claims.UID))+":"+strconv.FormatInt(userSK.GoodsId, 10), 1, time.Minute*30).Result()
 		if err != nil {
 		returnAuthority1:
 			err := returnSecondKillAuthority(s, result)
@@ -211,6 +209,6 @@ func returnSecondKillAuthority(s model.SecondKillGoodsDetails, result string) er
 
 //删除已记录的秒杀用户id
 func delSecondKillUserLog(claims *utils.Claims, userSK UserSecondKill) error {
-	_, err := db.RedisDB.LRem(ctx, strconv.FormatInt(userSK.GoodsId, 10), 1, claims.UID).Result()
+	_, err := db.RedisDB.Del(ctx, strconv.Itoa(int(claims.UID))+":"+strconv.FormatInt(userSK.GoodsId, 10)).Result()
 	return err
 }
